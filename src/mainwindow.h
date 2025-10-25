@@ -14,7 +14,8 @@ class MainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
-    explicit MainWindow(QWidget* parent = nullptr);
+    explicit MainWindow(const QString& outputDir = QString(), bool verboseMode = false,
+        QWidget* parent = nullptr);
     ~MainWindow() override;
 
 protected:
