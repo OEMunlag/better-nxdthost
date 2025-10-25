@@ -1,0 +1,44 @@
+# Build directories
+build/
+cmake-build-*/
+
+# Qt generated files
+*.autosave
+*.user
+*.user.*
+moc_*.cpp
+qrc_*.cpp
+ui_*.h
+
+# Compiled files
+*.o
+*.obj
+*.so
+*.dylib
+*.dll
+*.exe
+*.app
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+
+# IDE files
+.vscode/
+.idea/
+*.pro.user
+*.qbs.user
+
+# macOS
+.DS_Store
+*.dSYM
+
+# Windows
+Thumbs.db
+*.pdb
+*.ilk
+
+# Output directory (if testing locally)
+nxdumptool/

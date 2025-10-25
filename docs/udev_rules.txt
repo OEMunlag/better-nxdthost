@@ -1,0 +1,15 @@
+# udev rules for Nintendo Switch running nxdumptool
+# Place this file in /etc/udev/rules.d/99-switch.rules
+#
+# Installation:
+#   sudo cp 99-switch.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload-rules
+#   sudo udevadm trigger
+#
+# This allows non-root users to access the Switch device
+
+# Nintendo Switch nxdumptool mode
+SUBSYSTEM=="usb", ATTRS{idVendor}=="057e", ATTRS{idProduct}=="3000", MODE="0666", TAG+="uaccess"
+
+# Alternative rule with group permission (replace 'plugdev' with your user group if needed)
+# SUBSYSTEM=="usb", ATTRS{idVendor}=="057e", ATTRS{idProduct}=="3000", MODE="0660", GROUP="plugdev"
