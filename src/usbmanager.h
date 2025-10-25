@@ -47,6 +47,7 @@ private:
     void resetNspInfo(bool deleteFile = false);
     bool isValueAlignedToEndpointPacketSize(size_t value) const;
     QString getSizeUnit(qint64 size, qint64& divisor) const;
+    QString sanitizeFilename(const QString& filename) const;
 
     libusb_context* m_context;
     libusb_device_handle* m_deviceHandle;
