@@ -661,7 +661,7 @@ QString UsbManager::getSizeUnit(qint64 size, qint64& divisor) const {
 
 QString UsbManager::sanitizeFilename(const QString& filename) const {
     QString sanitized = filename;
-    sanitized.replace('\', '/');
+    sanitized.replace('\\', '/');
 
     while (sanitized.startsWith('/')) {
         sanitized.remove(0, 1);
