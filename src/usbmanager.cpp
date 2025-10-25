@@ -7,7 +7,7 @@
 #include <cstring>
 #include <algorithm>
 
-UsbManager::UsbManager(const QString& outputDir, QObject* parent)
+UsbManager::UsbManager(const QString& outputDir, bool disableFreeSpaceCheck, QObject* parent)
     : QThread(parent)
     , m_context(nullptr)
     , m_deviceHandle(nullptr)
@@ -16,6 +16,7 @@ UsbManager::UsbManager(const QString& outputDir, QObject* parent)
     , m_epMaxPacketSize(0)
     , m_outputDir(outputDir)
     , m_stopRequested(false)
+    , m_disableFreeSpaceCheck(disableFreeSpaceCheck)
     , m_nxdtVersionMajor(0)
     , m_nxdtVersionMinor(0)
     , m_nxdtVersionMicro(0)
@@ -328,11 +329,15 @@ uint32_t UsbManager::handleSendFileProperties(const QByteArray& cmdBlock) {
             return USB_STATUS_HOST_IO_ERROR;
         }
         
-        QStorageInfo storage(fileInfo.absolutePath());
-        if (storage.bytesAvailable() < fileSize) {
-            resetNspInfo();
-            emit logMessage("Not enough free space!", 3);
-            return USB_STATUS_HOST_IO_ERROR;
+        if (!m_disableFreeSpaceCheck) {
+            QStorageInfo storage(fileInfo.absolutePath());
+            if (storage.bytesAvailable() < fileSize) {
+                resetNspInfo();
+                emit logMessage("Not enough free space!", 3);
+                return USB_STATUS_HOST_IO_ERROR;
+            }
+        } else {
+            emit logMessage("Skipping free space check (disabled by command line option).", 0);
         }
         
         file = new QFile(fullPath);

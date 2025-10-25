@@ -7,6 +7,7 @@ A C++ Qt6 port of the nxdumptool Python host script. This application provides a
 - Modern Qt6 GUI interface
 - Real-time file transfer progress with speed indicators
 - Verbose logging option
+- Optional free space check for target storage
 - NSP file support with header handling
 - Extracted filesystem dump support
 - Cross-platform (Windows, macOS, Linux)
@@ -69,6 +70,17 @@ Release\nxdumptool_host.exe
 4. Connect your Nintendo Switch running nxdumptool via USB
 5. Use nxdumptool on your Switch to dump files
 6. Files will be transferred and saved automatically
+
+### Command-line Options
+
+The application supports several command-line switches that let you control its
+behaviour when launching from a terminal:
+
+- `-o, --outdir <DIR>` – start with the specified output directory selected.
+- `-V, --verbose` – enable verbose logging so that debug-level messages are displayed in the log window.
+- `-F, --no-free-space-check` – disable the free space validation performed
+  before each transfer. This is useful when the host system cannot correctly
+  detect the available space.
 
 ### Verbose Mode
 Enable the "Verbose output" checkbox to see detailed debug information including:

@@ -8,12 +8,14 @@
 #include <QCloseEvent>
 #include <QScrollBar>
 
-MainWindow::MainWindow(const QString& outputDir, bool verboseMode, QWidget* parent)
+MainWindow::MainWindow(const QString& outputDir, bool verboseMode, bool disableFreeSpaceCheck,
+    QWidget* parent)
     : QMainWindow(parent)
     , m_usbManager(nullptr)
     , m_progressDialog(nullptr)
     , m_outputDir(outputDir)
     , m_verboseMode(verboseMode)
+    , m_disableFreeSpaceCheck(disableFreeSpaceCheck)
 {
     setWindowTitle(QString("nxdumptool host v%1").arg(APP_VERSION));
     setMinimumSize(600, 550);
@@ -131,7 +133,7 @@ void MainWindow::onStartServer() {
     m_logTextEdit->clear();
     
     // Create and start USB manager
-    m_usbManager = new UsbManager(m_outputDir, this);
+    m_usbManager = new UsbManager(m_outputDir, m_disableFreeSpaceCheck, this);
     
     connect(m_usbManager, &UsbManager::logMessage, this, &MainWindow::onLogMessage);
     connect(m_usbManager, &UsbManager::startOffset, this, &MainWindow::onProgressStart);
