@@ -12,7 +12,8 @@ class UsbManager : public QThread {
     Q_OBJECT
 
 public:
-    explicit UsbManager(const QString& outputDir, QObject* parent = nullptr);
+    explicit UsbManager(const QString& outputDir, bool disableFreeSpaceCheck,
+        QObject* parent = nullptr);
     ~UsbManager() override;
 
     void stopServer();
@@ -56,6 +57,7 @@ private:
     
     QString m_outputDir;
     bool m_stopRequested;
+    bool m_disableFreeSpaceCheck;
     
     // nxdumptool version info
     uint8_t m_nxdtVersionMajor;

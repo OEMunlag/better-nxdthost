@@ -30,10 +30,15 @@ int main(int argc, char *argv[]) {
         "Enable verbose output");
     parser.addOption(verboseOption);
 
+    QCommandLineOption disableFreeSpaceCheckOption(QStringList() << "F" << "no-free-space-check",
+        "Disable free space verification before starting a transfer");
+    parser.addOption(disableFreeSpaceCheckOption);
+
     parser.process(app);
 
     const QString outputDir = parser.value(outputDirOption);
     const bool verboseMode = parser.isSet(verboseOption);
+    const bool disableFreeSpaceCheck = parser.isSet(disableFreeSpaceCheckOption);
     
     // Check for libusb at startup
     libusb_context* testContext = nullptr;
@@ -47,7 +52,7 @@ int main(int argc, char *argv[]) {
     }
     libusb_exit(testContext);
     
-    MainWindow window(outputDir, verboseMode);
+    MainWindow window(outputDir, verboseMode, disableFreeSpaceCheck);
     window.show();
     
     return app.exec();

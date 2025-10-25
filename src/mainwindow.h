@@ -15,7 +15,7 @@ class MainWindow : public QMainWindow {
 
 public:
     explicit MainWindow(const QString& outputDir = QString(), bool verboseMode = false,
-        QWidget* parent = nullptr);
+        bool disableFreeSpaceCheck = false, QWidget* parent = nullptr);
     ~MainWindow() override;
 
 protected:
@@ -49,6 +49,7 @@ private:
     
     QString m_outputDir;
     bool m_verboseMode;
+    bool m_disableFreeSpaceCheck;
 };
 
 #endif // MAINWINDOW_H
