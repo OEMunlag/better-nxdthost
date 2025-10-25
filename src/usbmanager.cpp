@@ -1,9 +1,11 @@
 #include "usbmanager.h"
 #include <QDir>
+#include <QElapsedTimer>
 #include <QFileInfo>
 #include <QStorageInfo>
 #include <QThread>
 #include <cstring>
+#include <algorithm>
 
 UsbManager::UsbManager(const QString& outputDir, QObject* parent)
     : QThread(parent)
@@ -41,11 +43,13 @@ UsbManager::~UsbManager() {
 }
 
 void UsbManager::run() {
+    m_stopRequested = false;
+
     if (libusb_init(&m_context) < 0) {
         emit logMessage("Failed to initialize libusb!", 3);
         return;
     }
-    
+
     commandHandler();
     
     emit serverStopped();
@@ -156,33 +160,88 @@ bool UsbManager::getDeviceEndpoints() {
 }
 
 QByteArray UsbManager::usbRead(size_t size, int timeout) {
-    QByteArray data(size, 0);
-    int transferred = 0;
-    
-    int result = libusb_bulk_transfer(m_deviceHandle, m_epIn, 
-        reinterpret_cast<unsigned char*>(data.data()), size, &transferred, timeout);
-    
-    if (result < 0 || transferred != static_cast<int>(size)) {
-        emit logMessage("USB read error or timeout!", 3);
+    if (!m_deviceHandle) {
         return QByteArray();
     }
-    
-    return data;
+
+    QByteArray data(size, 0);
+
+    const int pollTimeout = (timeout < 0) ? 500 : std::max(1, std::min(timeout, 500));
+    QElapsedTimer timer;
+    if (timeout >= 0) {
+        timer.start();
+    }
+
+    while (!m_stopRequested) {
+        int transferred = 0;
+        int result = libusb_bulk_transfer(m_deviceHandle, m_epIn,
+            reinterpret_cast<unsigned char*>(data.data()), size, &transferred, pollTimeout);
+
+        if (result == LIBUSB_ERROR_TIMEOUT) {
+            if (timeout >= 0 && timer.hasExpired(timeout)) {
+                emit logMessage("USB read timed out!", 3);
+                return QByteArray();
+            }
+            continue;
+        }
+
+        if (m_stopRequested) {
+            break;
+        }
+
+        if (result < 0 || transferred != static_cast<int>(size)) {
+            if (!m_stopRequested) {
+                emit logMessage("USB read error!", 3);
+            }
+            return QByteArray();
+        }
+
+        return data;
+    }
+
+    return QByteArray();
 }
 
 bool UsbManager::usbWrite(const QByteArray& data, int timeout) {
-    int transferred = 0;
-    
-    int result = libusb_bulk_transfer(m_deviceHandle, m_epOut, 
-        reinterpret_cast<unsigned char*>(const_cast<char*>(data.data())), 
-        data.size(), &transferred, timeout);
-    
-    if (result < 0 || transferred != data.size()) {
-        emit logMessage("USB write error or timeout!", 3);
+    if (!m_deviceHandle) {
         return false;
     }
-    
-    return true;
+
+    const int pollTimeout = (timeout < 0) ? 500 : std::max(1, std::min(timeout, 500));
+    QElapsedTimer timer;
+    if (timeout >= 0) {
+        timer.start();
+    }
+
+    while (!m_stopRequested) {
+        int transferred = 0;
+        int result = libusb_bulk_transfer(m_deviceHandle, m_epOut,
+            reinterpret_cast<unsigned char*>(const_cast<char*>(data.data())),
+            data.size(), &transferred, pollTimeout);
+
+        if (result == LIBUSB_ERROR_TIMEOUT) {
+            if (timeout >= 0 && timer.hasExpired(timeout)) {
+                emit logMessage("USB write timed out!", 3);
+                return false;
+            }
+            continue;
+        }
+
+        if (m_stopRequested) {
+            break;
+        }
+
+        if (result < 0 || transferred != data.size()) {
+            if (!m_stopRequested) {
+                emit logMessage("USB write error!", 3);
+            }
+            return false;
+        }
+
+        return true;
+    }
+
+    return false;
 }
 
 bool UsbManager::usbSendStatus(uint32_t code) {
@@ -338,7 +397,9 @@ uint32_t UsbManager::handleSendFileProperties(const QByteArray& cmdBlock) {
         
         QByteArray chunk = usbRead(readSize, USB_TRANSFER_TIMEOUT);
         if (chunk.isEmpty()) {
-            emit logMessage("Failed to read data chunk!", 3);
+            if (!m_stopRequested) {
+                emit logMessage("Failed to read data chunk!", 3);
+            }
             if (m_nspTransferMode) {
                 resetNspInfo(true);
             } else {
@@ -475,7 +536,9 @@ void UsbManager::commandHandler() {
     while (!m_stopRequested) {
         QByteArray cmdHeader = usbRead(USB_CMD_HEADER_SIZE);
         if (cmdHeader.isEmpty()) {
-            emit logMessage("Failed to read command header!", 3);
+            if (!m_stopRequested) {
+                emit logMessage("Failed to read command header!", 3);
+            }
             break;
         }
         
@@ -493,8 +556,10 @@ void UsbManager::commandHandler() {
             
             cmdBlock = usbRead(readSize, USB_TRANSFER_TIMEOUT);
             if (cmdBlock.isEmpty() || cmdBlock.size() != static_cast<int>(hdr->cmdBlockSize)) {
-                emit logMessage(QString("Failed to read command block (expected 0x%1 bytes)!")
-                    .arg(hdr->cmdBlockSize, 0, 16), 3);
+                if (!m_stopRequested) {
+                    emit logMessage(QString("Failed to read command block (expected 0x%1 bytes)!")
+                        .arg(hdr->cmdBlockSize, 0, 16), 3);
+                }
                 break;
             }
         }
@@ -540,7 +605,9 @@ void UsbManager::commandHandler() {
         }
     }
     
-    emit logMessage("Stopping server", 1);
+    if (!m_stopRequested) {
+        emit logMessage("Stopping server", 1);
+    }
 }
 
 void UsbManager::resetNspInfo(bool deleteFile) {

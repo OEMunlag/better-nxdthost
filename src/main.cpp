@@ -26,11 +26,14 @@ int main(int argc, char *argv[]) {
         "Path to output directory", "DIR");
     parser.addOption(outputDirOption);
     
-    QCommandLineOption verboseOption(QStringList() << "v" << "verbose",
+    QCommandLineOption verboseOption(QStringList() << "V" << "verbose",
         "Enable verbose output");
     parser.addOption(verboseOption);
-    
+
     parser.process(app);
+
+    const QString outputDir = parser.value(outputDirOption);
+    const bool verboseMode = parser.isSet(verboseOption);
     
     // Check for libusb at startup
     libusb_context* testContext = nullptr;
@@ -44,7 +47,7 @@ int main(int argc, char *argv[]) {
     }
     libusb_exit(testContext);
     
-    MainWindow window;
+    MainWindow window(outputDir, verboseMode);
     window.show();
     
     return app.exec();

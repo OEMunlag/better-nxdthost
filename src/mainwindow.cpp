@@ -8,21 +8,26 @@
 #include <QCloseEvent>
 #include <QScrollBar>
 
-MainWindow::MainWindow(QWidget* parent)
+MainWindow::MainWindow(const QString& outputDir, bool verboseMode, QWidget* parent)
     : QMainWindow(parent)
     , m_usbManager(nullptr)
-    , m_verboseMode(false)
+    , m_progressDialog(nullptr)
+    , m_outputDir(outputDir)
+    , m_verboseMode(verboseMode)
 {
     setWindowTitle(QString("nxdumptool host v%1").arg(APP_VERSION));
     setMinimumSize(600, 550);
     resize(600, 550);
-    
-    // Set default output directory
-    QString documentsPath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
-    m_outputDir = QDir(documentsPath).filePath("nxdumptool");
-    
+
+    if (m_outputDir.isEmpty()) {
+        QString documentsPath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+        m_outputDir = QDir(documentsPath).filePath("nxdumptool");
+    }
+
     setupUi();
-    
+
+    m_verboseCheckBox->setChecked(m_verboseMode);
+
     m_progressDialog = new ProgressDialog(this);
 }
 
@@ -200,15 +205,17 @@ void MainWindow::toggleElements(bool enabled) {
     if (enabled) {
         m_chooseDirButton->setEnabled(true);
         m_serverButton->setText("Start Server");
-        m_serverButton->disconnect();
-        connect(m_serverButton, &QPushButton::clicked, this, &MainWindow::onStartServer);
+        QObject::disconnect(m_serverButton, &QPushButton::clicked, this, &MainWindow::onStopServer);
+        QObject::connect(m_serverButton, &QPushButton::clicked, this, &MainWindow::onStartServer,
+            Qt::UniqueConnection);
         m_tipLabel->hide();
         m_verboseCheckBox->setEnabled(true);
     } else {
         m_chooseDirButton->setEnabled(false);
         m_serverButton->setText("Stop Server");
-        m_serverButton->disconnect();
-        connect(m_serverButton, &QPushButton::clicked, this, &MainWindow::onStopServer);
+        QObject::disconnect(m_serverButton, &QPushButton::clicked, this, &MainWindow::onStartServer);
+        QObject::connect(m_serverButton, &QPushButton::clicked, this, &MainWindow::onStopServer,
+            Qt::UniqueConnection);
         m_tipLabel->setText("Please connect a Nintendo Switch console running nxdumptool.\n"
                            "Exit nxdumptool on your console or disconnect it to stop the server.");
         m_tipLabel->show();
