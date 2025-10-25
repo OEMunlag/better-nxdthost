@@ -291,6 +291,12 @@ uint32_t UsbManager::handleSendFileProperties(const QByteArray& cmdBlock) {
     uint32_t filenameLength = *reinterpret_cast<const uint32_t*>(cmdBlock.constData() + 8);
     uint32_t nspHeaderSize = *reinterpret_cast<const uint32_t*>(cmdBlock.constData() + 12);
     QString filename = QString::fromUtf8(cmdBlock.mid(16, filenameLength));
+    QString sanitizedFilename = sanitizeFilename(filename);
+
+    if (sanitizedFilename.isEmpty() || sanitizedFilename == ".") {
+        emit logMessage("Received empty filename!", 3);
+        return USB_STATUS_MALFORMED_CMD;
+    }
     
     emit logMessage(QString("File: \"%1\" (size: 0x%2)").arg(filename).arg(fileSize, 0, 16), 0);
     
@@ -319,7 +325,7 @@ uint32_t UsbManager::handleSendFileProperties(const QByteArray& cmdBlock) {
     QString fullPath;
     
     if (!m_nspTransferMode || !m_nspFile) {
-        fullPath = QDir(m_outputDir).filePath(filename);
+        fullPath = QDir(m_outputDir).filePath(sanitizedFilename);
         QFileInfo fileInfo(fullPath);
         QDir().mkpath(fileInfo.absolutePath());
         
@@ -344,7 +350,8 @@ uint32_t UsbManager::handleSendFileProperties(const QByteArray& cmdBlock) {
         if (!file->open(QIODevice::WriteOnly)) {
             delete file;
             resetNspInfo();
-            emit logMessage("Failed to open output file!", 3);
+            emit logMessage(QString("Failed to open output file: \"%1\"")
+                               .arg(QDir::toNativeSeparators(fullPath)), 3);
             return USB_STATUS_HOST_IO_ERROR;
         }
         
@@ -639,7 +646,7 @@ bool UsbManager::isValueAlignedToEndpointPacketSize(size_t value) const {
 QString UsbManager::getSizeUnit(qint64 size, qint64& divisor) const {
     const char* units[] = {"B", "KiB", "MiB", "GiB"};
     int unitCount = 4;
-    
+
     for (int i = 0; i < unitCount; i++) {
         qint64 threshold = qint64(1) << (10 * (i + 1));
         if (size < threshold || i == unitCount - 1) {
@@ -647,7 +654,20 @@ QString UsbManager::getSizeUnit(qint64 size, qint64& divisor) const {
             return QString(units[i]);
         }
     }
-    
+
     divisor = 1;
     return "B";
+}
+
+QString UsbManager::sanitizeFilename(const QString& filename) const {
+    QString sanitized = filename;
+    sanitized.replace('\', '/');
+
+    while (sanitized.startsWith('/')) {
+        sanitized.remove(0, 1);
+    }
+
+    sanitized = QDir::cleanPath(sanitized);
+
+    return sanitized;
 }
